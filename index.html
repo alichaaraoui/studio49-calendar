@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f3f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0c0c" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Studio 49">
+<meta name="description" content="Studio 49 team calendar: mark when you're free, find the best meeting times, see booked meetings.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ec3f72'/%3E%3Cstop offset='1' stop-color='%23ff8a4c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='42' font-family='Arial Black,Arial' font-weight='900' font-size='26' text-anchor='middle' fill='white'%3E49%3C/text%3E%3C/svg%3E">
+<title>Studio 49 Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* base reset */
+html{color-scheme:light}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: phone-first stack under a compact brand bar, frosted bottom tab bar; one hot-pink accent carries "free", mint means "everyone" */
+:root{
+  --bg:#f4f3f1; --surface:#ffffff; --raise:#fbfaf9; --cell:#e9e7e4; --line:#e3e0dc;
+  --fg:#141211; --muted:#6f6a66; --faint:#a39e99;
+  --accent:#ec3f72; --accent-2:#ff8a4c; --accent-soft:#fde4ec; --on-accent:#ffffff;
+  --good:#12a37a; --good-soft:#dcf4ec; --danger:#d23a3a;
+  --g1:#ec3f72; --g2:#f59e0b; --g3:#12a37a; --g4:#a855f7; --g5:#ef6b2f;
+  --glass:rgba(255,255,255,.78);
+  --shadow:0 1px 1px rgba(20,18,17,.04),0 8px 24px -12px rgba(20,18,17,.18);
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"Onest",system-ui,-apple-system,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:22px; --nav-h:68px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d0c0c; --surface:#171515; --raise:#1d1b1b; --cell:#262323; --line:#2c2828;
+  --fg:#f4f1ee; --muted:#a29b96; --faint:#6c6662;
+  --accent:#ff5a8a; --accent-2:#ff9a5c; --accent-soft:#3a1823; --on-accent:#1a0a10;
+  --good:#3ddba8; --good-soft:#123329; --danger:#ff6b6b;
+  --g1:#ff5a8a; --g2:#fbbf24; --g3:#3ddba8; --g4:#c084fc; --g5:#ff8650;
+  --glass:rgba(23,21,21,.78);
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset,0 10px 30px -14px rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d0c0c; --surface:#171515; --raise:#1d1b1b; --cell:#262323; --line:#2c2828;
+  --fg:#f4f1ee; --muted:#a29b96; --faint:#6c6662;
+  --accent:#ff5a8a; --accent-2:#ff9a5c; --accent-soft:#3a1823; --on-accent:#1a0a10;
+  --good:#3ddba8; --good-soft:#123329; --danger:#ff6b6b;
+  --g1:#ff5a8a; --g2:#fbbf24; --g3:#3ddba8; --g4:#c084fc; --g5:#ff8650;
+  --glass:rgba(23,21,21,.78);
+  --shadow:0 1px 0 rgba(255,255,255,.03) inset,0 10px 30px -14px rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body);-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:14px calc(var(--nav-h) + 36px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+
+/* brand bar */
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:4px 6px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font:700 16px var(--f-display);color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 6px 18px -6px var(--accent);flex:none;letter-spacing:-.02em}
+h1{font:700 19px/1.1 var(--f-display);margin:0;letter-spacing:-.02em}
+.sub{margin:2px 0 0;color:var(--muted);font-size:13px}
+h2{font:700 16px/1.25 var(--f-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.eyebrow{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+
+.panel{display:flex;flex-direction:column;gap:14px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0;box-shadow:var(--shadow)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+select,input[type=text]{font:400 16px var(--f-body);color:var(--fg);background:var(--raise);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0;min-height:48px;width:100%}
+input[type=text]{flex:1 1 160px;width:auto}
+input::placeholder{color:var(--faint)}
+.btn{font:600 15px var(--f-body);border:1px solid var(--line);background:var(--raise);color:var(--fg);border-radius:14px;padding:12px 18px;cursor:pointer;min-height:48px;transition:transform .12s, background .12s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.btn.hot{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:0;color:#fff}
+.btn.small{padding:7px 14px;font-size:14px;min-height:38px;border-radius:12px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.danger{color:var(--danger)}
+.btn.wide{width:100%}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chip{font:600 14px var(--f-body);border:1px solid var(--line);background:var(--raise);color:var(--fg);border-radius:999px;padding:9px 15px;cursor:pointer;min-height:40px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px;transition:background .12s,border-color .12s}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--faint))}
+.chip .n{font:500 12px var(--f-mono);color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.chip[aria-pressed="true"] .n{color:var(--bg);opacity:.6}
+.chip.member[aria-pressed="true"]{background:color-mix(in oklab,var(--c) 16%,var(--surface));border-color:var(--c);color:var(--fg)}
+.scroller{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-inline:-18px;padding-inline:18px;padding-block:2px}
+.scroller::-webkit-scrollbar{display:none}
+.status{font:400 12px var(--f-mono);color:var(--muted)}
+.banner{border:1px dashed var(--line);border-radius:16px;padding:12px 14px;color:var(--muted);font-size:14px;background:var(--surface)}
+.empty{color:var(--muted);margin:0;font-size:14px}
+
+/* avatars */
+.av{width:36px;height:36px;border-radius:50%;display:inline-grid;place-items:center;font:600 13px var(--f-body);background:var(--cell);color:var(--muted);flex:none;letter-spacing:.02em}
+.av.lg{width:52px;height:52px;font-size:17px}
+.av.on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
+.stack{display:flex}
+.stack .av{width:30px;height:30px;font-size:11px;border:2px solid var(--surface);margin-left:-8px}
+.stack .av:first-child{margin-left:0}
+.stack .more{background:var(--raise);color:var(--muted)}
+
+/* nav */
+.tabs{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:30;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--glass);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);border:1px solid var(--line);border-radius:24px;padding:6px;box-shadow:0 12px 32px -12px rgba(0,0,0,.35)}
+.tabs button{border:0;background:transparent;color:var(--muted);font:600 11.5px var(--f-body);padding:8px 4px;border-radius:18px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:background .15s,color .15s}
+.tabs svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+@media (min-width:760px){
+  .wrap{padding-block:28px 56px;gap:18px}
+  h1{font-size:22px}
+  .tabs{position:static;display:flex;width:fit-content;box-shadow:none;border-radius:18px;-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface)}
+  .tabs button{flex-direction:row;font-size:14px;padding:9px 16px;gap:8px;border-radius:13px}
+  .tabs svg{width:18px;height:18px}
+}
+
+/* me */
+.me{display:flex;align-items:center;gap:14px}
+.me .info{flex:1;min-width:0}
+.me h2{font-size:18px}
+.ring{--v:0;width:52px;height:52px;border-radius:50%;background:conic-gradient(var(--accent) calc(var(--v)*1turn),var(--cell) 0);display:grid;place-items:center;flex:none}
+.ring span{width:42px;height:42px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font:600 12px var(--f-mono)}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font:600 11px var(--f-body);padding:3px 9px;border-radius:999px;background:color-mix(in oklab,var(--c) 14%,transparent);color:color-mix(in oklab,var(--c) 75%,var(--fg))}
+
+/* day picker */
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.days button{border:1px solid var(--line);background:var(--raise);border-radius:16px;padding:9px 0 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;transition:background .12s}
+.days .d{font:600 13px var(--f-body)}
+.days .bar{width:60%;height:4px;border-radius:2px;background:var(--cell);overflow:hidden}
+.days .bar i{display:block;height:100%;background:var(--accent)}
+.days button[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.days button[aria-pressed="true"] .bar{background:color-mix(in oklab,var(--bg) 25%,transparent)}
+.presets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.presets button{border:1px solid var(--line);background:var(--raise);border-radius:14px;padding:10px 4px;cursor:pointer;font:600 14px var(--f-body);display:flex;flex-direction:column;align-items:center;gap:1px;min-height:54px;transition:background .12s}
+.presets button small{font:400 11px var(--f-mono);color:var(--muted)}
+.presets button.full{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.presets button.full small{color:var(--accent)}
+
+/* day slots */
+.slots{display:flex;flex-direction:column}
+.slot{display:grid;grid-template-columns:58px 1fr;align-items:center;border:0;background:none;padding:0;cursor:pointer;touch-action:manipulation;text-align:left}
+.slot .t{font:500 11.5px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums;align-self:start;padding-top:3px}
+.slot.half .t{color:transparent}
+.slot .b{height:40px;margin-block:2px;border-radius:12px;background:var(--raise);border:1px dashed var(--line);display:flex;align-items:center;padding-inline:14px;font:600 13px var(--f-body);color:transparent;transition:background .12s}
+.slot:hover .b{border-color:var(--faint)}
+.slot.on .b{background:linear-gradient(135deg,var(--accent),var(--accent-2));border:1px solid transparent;color:#fff}
+.slot.on.cont .b{border-top-left-radius:4px;border-top-right-radius:4px;margin-top:0;color:transparent}
+.slot.on.cont-next .b{border-bottom-left-radius:4px;border-bottom-right-radius:4px;margin-bottom:0}
+
+/* week grid */
+.gridwrap{overflow-x:auto;margin-inline:-4px;padding-inline:4px}
+.grid{display:grid;grid-template-columns:38px repeat(7,minmax(0,1fr));gap:3px;user-select:none;-webkit-user-select:none}
+.grid .dh{font:600 11px var(--f-body);text-align:center;color:var(--muted);padding-bottom:6px}
+.grid .tl{font:400 10px var(--f-mono);color:var(--faint);text-align:right;padding-right:6px;line-height:18px;height:18px;white-space:nowrap}
+.grid .tl.half{visibility:hidden}
+.cell{height:18px;background:var(--cell);border-radius:5px;font:500 10px/18px var(--f-mono);text-align:center;color:var(--fg);font-variant-numeric:tabular-nums;overflow:hidden}
+.grid .hourtop{margin-top:3px}
+.grid.paint{touch-action:none}
+.grid.paint .cell{cursor:pointer}
+.grid.paint .cell.on{background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+.grid.heat .cell{cursor:pointer;background:color-mix(in oklab,var(--accent) calc(var(--p,0) * 100%),var(--cell))}
+.grid.heat .cell.dark{color:#fff}
+.grid.heat .cell.all{background:var(--good);color:#fff}
+.grid.heat .cell.pick{outline:2px solid var(--fg);outline-offset:1px;position:relative;z-index:1}
+@media (min-width:760px){
+  .grid{grid-template-columns:60px repeat(7,minmax(36px,1fr))}
+  .grid .tl{font-size:11px;line-height:20px;height:20px;padding-right:10px}
+  .cell{height:20px;line-height:20px}
+}
+.legend{display:flex;align-items:center;gap:8px;font:400 11px var(--f-mono);color:var(--muted);flex-wrap:wrap}
+.ramp{width:64px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--cell),var(--accent))}
+.sw{display:inline-block;width:12px;height:12px;border-radius:4px;vertical-align:-2px}
+
+.cols{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+@media (min-width:880px){.cols{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}}
+.side{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* hero best time */
+.hero{position:relative;overflow:hidden;border:0;border-radius:var(--r);padding:20px;text-align:left;cursor:pointer;color:#fff;background:radial-gradient(120% 140% at 100% 0%,var(--accent-2) 0%,var(--accent) 45%,#9b1b4a 100%);display:flex;flex-direction:column;gap:10px;box-shadow:0 18px 40px -18px var(--accent)}
+.hero.full{background:radial-gradient(120% 140% at 100% 0%,#7cf0c6 0%,var(--good) 50%,#075e47 100%);box-shadow:0 18px 40px -18px var(--good)}
+.hero .eyebrow{color:rgba(255,255,255,.8)}
+.hero .big{font:700 clamp(26px,7vw,34px)/1.05 var(--f-display);letter-spacing:-.03em}
+.hero .time{font:500 16px var(--f-body);opacity:.92}
+.hero .foot{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.hero .count{font:700 13px var(--f-mono);background:rgba(255,255,255,.18);padding:6px 11px;border-radius:999px}
+.hero .stack .av{border-color:rgba(0,0,0,.08);background:rgba(255,255,255,.25);color:#fff}
+.hero .miss{font-size:13px;opacity:.9}
+.hero[aria-current="true"]{outline:3px solid var(--fg);outline-offset:3px}
+
+ol.best{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+ol.best button{width:100%;text-align:left;border:1px solid var(--line);background:var(--raise);border-radius:16px;padding:12px 14px;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;gap:2px 12px;align-items:center}
+ol.best button[aria-current="true"]{border-color:var(--fg)}
+.num{font:700 13px var(--f-display);color:var(--faint);width:18px}
+.when{font-weight:600;font-size:15px}
+.when small{display:block;font:400 12px var(--f-mono);color:var(--muted)}
+.score{font:600 13px var(--f-mono);font-variant-numeric:tabular-nums;color:var(--accent)}
+.score.full{color:var(--good)}
+.missing{grid-column:2/4;font-size:12.5px;color:var(--muted)}
+
+.detail{display:flex;flex-direction:column;gap:10px;font-size:14px}
+.detail .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.x{border:0;background:var(--raise);border-radius:999px;width:36px;height:36px;cursor:pointer;font-size:20px;line-height:1;flex:none}
+@media (max-width:879px){
+  .detail{position:fixed;left:12px;right:12px;bottom:calc(var(--nav-h) + 22px + env(safe-area-inset-bottom,0px));z-index:25;max-height:52vh;overflow-y:auto;box-shadow:0 20px 50px -10px rgba(0,0,0,.45);animation:up .2s cubic-bezier(.2,.9,.3,1.2)}
+}
+@media (min-width:760px) and (max-width:879px){.detail{bottom:16px}}
+@keyframes up{from{transform:translateY(16px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+.names{display:flex;flex-wrap:wrap;gap:6px}
+.name{background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:13px;font-weight:500}
+.name.free{background:var(--good-soft);border-color:transparent;color:var(--good)}
+
+.groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,310px),1fr));gap:14px}
+.gcard{position:relative;overflow:hidden}
+.gcard::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--c)}
+.gtitle{display:flex;align-items:center;gap:10px}
+.gicon{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font:700 13px var(--f-display);background:color-mix(in oklab,var(--c) 16%,transparent);color:var(--c);flex:none}
+.confirm{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--danger);flex-wrap:wrap}
+.people{display:flex;flex-direction:column}
+.person{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.person:last-child{border-bottom:0}
+.pinfo{display:flex;gap:12px;align-items:center;min-width:0}
+.pinfo .nm{font-weight:600}
+.pinfo .meta{display:block;font:400 12px var(--f-mono);color:var(--muted)}
+.pick-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));gap:8px}
+.pick-list button{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--raise);border-radius:16px;padding:10px;cursor:pointer;text-align:left;font-weight:600;font-size:14px;min-width:0}
+.pick-list button span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-list button:active{transform:scale(.98)}
+/* calendar */
+input[type=date]{font:400 16px var(--f-body);color:var(--fg);background:var(--raise);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-height:48px;width:100%;min-width:0}
+.fld{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fld input,.fld select{width:100%;flex:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){.two{grid-template-columns:1fr}}
+.bookcard{border-color:var(--accent);box-shadow:0 18px 40px -22px var(--accent)}
+.month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.month .wk{font:500 11px var(--f-mono);color:var(--faint);text-align:center;padding-bottom:2px}
+.month button{aspect-ratio:1;border:0;background:var(--raise);border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:600 14px var(--f-body);min-width:0;padding:0;transition:background .12s}
+.month button.past{color:var(--faint)}
+.month button.today{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent)}
+.month button[aria-pressed="true"]{background:var(--fg);color:var(--bg);box-shadow:none}
+.dots{display:flex;gap:2px;height:5px}
+.dots i{width:5px;height:5px;border-radius:50%}
+.agday{display:grid;grid-template-columns:46px minmax(0,1fr);gap:12px;align-items:start}
+.agdate{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:12px}
+.dnum{font:700 24px/1 var(--f-display);letter-spacing:-.03em}
+.aglist{display:flex;flex-direction:column;gap:10px;min-width:0}
+.mtg{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:15px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);min-width:0}
+.mtg h3{font:700 15px/1.25 var(--f-display);margin:0 0 2px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.mtg .tag{flex:none}
+.mtg .when-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:1px}
+.cpdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cpdays button{border:1px solid var(--line);background:var(--raise);border-radius:14px;min-height:44px;cursor:pointer;font:600 13px var(--f-body);min-width:0;padding:0;transition:background .12s}
+.cpdays button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.cpdays button.from[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.cpdays button.src{background:var(--fg);border-color:var(--fg);color:var(--bg);opacity:.35;cursor:default}
+.btn:disabled{opacity:.55;cursor:default}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="mark">49</span><div><h1>Studio 49</h1><p class="sub">Team calendar</p></div></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-mine" data-tab="mine"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="4"/><path d="M3.5 10h17M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>My times</button>
+      <button role="tab" id="tab-find" data-tab="find"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>Find a time</button>
+      <button role="tab" id="tab-cal" data-tab="cal"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="4"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14.5" r="1"/><circle cx="12" cy="14.5" r="1"/><circle cx="15.5" cy="14.5" r="1"/></svg>Calendar</button>
+      <button role="tab" id="tab-groups" data-tab="groups"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><circle cx="17" cy="10" r="2.5"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M15 14.6c2.6-.3 4.8 1 5.5 3.9"/></svg>Teams</button>
+    </nav>
+  </header>
+  <div id="banner" class="banner" hidden></div>
+  <section id="view" class="panel"></section>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DAYS_LONG=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const START=8, SLOTS=28; // 8:00 AM to 10:00 PM in 30-minute slots
+const PRESETS=[['Morning','8–12',0,8],['Afternoon','12–5',8,18],['Evening','5–10',18,28]];
+const GROUP_ORDER=['g-leadership','g-design','g-engineering','g-clients-comms','g-operations'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function fmt(min){let h=Math.floor(min/60),m=min%60;const ap=h>=12&&h<24?'PM':'AM';h=h%12||12;return h+(m?':'+String(m).padStart(2,'0'):'')+' '+ap}
+function fmtShort(min){let h=Math.floor(min/60);const ap=h>=12?'p':'a';h=h%12||12;return h+ap}
+const slotStart=i=>START*60+i*30;
+const key=(d,i)=>d+'-'+i;
+const phone=matchMedia('(max-width:759px)');
+const initials=n=>n.trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+function gColor(id){let i=GROUP_ORDER.indexOf(id);if(i<0){i=0;for(const ch of id)i=(i*31+ch.charCodeAt(0))>>>0}return `var(--g${i%5+1})`}
+const firstName=n=>n.split(/\s+/)[0];
+
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+const S={
+  db:null, ready:false,
+  people:new Map(), groups:new Map(),
+  tab:store.get('s49.tab')||'mine',
+  me:store.get('s49.me')||'', switching:false,
+  mySlots:new Set(), dirty:false, saving:'',
+  day:(new Date().getDay()+6)%7, copyTo:new Set(),
+  target:'all', duration:2, pick:null, confirm:null,
+  meetings:new Map(), draft:null, month:null, selDate:null, onlyMine:false,
+};
+
+/* ---------- data ---------- */
+function sortedPeople(){return [...S.people.entries()].map(([id,p])=>({id,...p})).sort((a,b)=>a.name.localeCompare(b.name))}
+function sortedGroups(){return [...S.groups.entries()].map(([id,g])=>({id,...g})).sort((a,b)=>{const x=GROUP_ORDER.indexOf(a.id),y=GROUP_ORDER.indexOf(b.id);return (x<0?99:x)-(y<0?99:y)||a.name.localeCompare(b.name)})}
+function groupsOf(pid){return sortedGroups().filter(g=>(g.members||[]).includes(pid))}
+function targetMembers(){
+  if(S.target==='all') return sortedPeople();
+  const g=S.groups.get(S.target); if(!g) return sortedPeople();
+  return sortedPeople().filter(p=>(g.members||[]).includes(p.id));
+}
+function slotsOf(p){return new Set(p.id===S.me&&S.dirty?S.mySlots:(p.slots||[]))}
+
+let saveChain=Promise.resolve(), saveTimer=null;
+function scheduleSave(){S.dirty=true;clearTimeout(saveTimer);S.saving='Saving…';updateStatus();saveTimer=setTimeout(saveMine,500)}
+function saveMine(){
+  if(!S.db||!S.me) return;
+  const p=S.people.get(S.me); if(!p) return;
+  const body={name:p.name,slots:[...S.mySlots],updatedAt:Date.now()};
+  saveChain=saveChain.then(()=>S.db.collection('people').doc(S.me).set(body)).then(()=>{
+    S.dirty=false;S.saving='Saved';updateStatus();
+  }).catch(e=>{S.saving=e&&e.code==='permission-denied'?'Not saved: the database refused it':'Couldn\'t save. Try again.';updateStatus()});
+}
+async function addPerson(name){
+  name=name.trim(); if(!name||!S.db) return;
+  const existing=sortedPeople().find(p=>p.name.toLowerCase()===name.toLowerCase());
+  if(existing){setMe(existing.id);return}
+  try{const ref=await S.db.collection('people').add({name,slots:[],updatedAt:Date.now()});setMe(ref.id)}
+  catch(e){flash(e.code==='permission-denied'?'The database refused that change. Ask Ali to check the Firestore rules.':'Couldn\'t add you. Try again.')}
+}
+function setMe(id){S.me=id;S.switching=false;store.set('s49.me',id);S.dirty=false;const p=S.people.get(id);S.mySlots=new Set(p?p.slots||[]:[]);S.saving='';render()}
+async function addGroup(name){name=name.trim();if(!name||!S.db)return;try{await S.db.collection('groups').add({name,members:[]})}catch(e){flash('Couldn\'t create the team.')}}
+async function toggleMember(gid,pid){
+  const g=S.groups.get(gid);if(!g)return;
+  const m=new Set(g.members||[]);m.has(pid)?m.delete(pid):m.add(pid);
+  try{await S.db.collection('groups').doc(gid).update({members:[...m]})}catch(e){flash('Couldn\'t update the team.')}
+}
+async function removeDoc(col,id){try{await S.db.collection(col).doc(id).delete();if(col==='people'&&id===S.me){S.me='';store.set('s49.me','')}}catch(e){flash('Couldn\'t remove it.')}S.confirm=null;render()}
+
+function flash(msg){const b=$('#banner');b.textContent=msg;b.hidden=false;clearTimeout(flash.t);flash.t=setTimeout(()=>{if(S.db)b.hidden=true},4000)}
+
+/* ---------- ranking ---------- */
+function rank(members,len){
+  const sets=members.map(slotsOf);
+  const filled=members.filter((p,i)=>sets[i].size>0);
+  const fsets=sets.filter(s=>s.size>0);
+  const out=[];
+  for(let d=0;d<7;d++)for(let i=0;i+len<=SLOTS;i++){
+    const free=[],busy=[];
+    filled.forEach((p,j)=>{let ok=true;for(let k=0;k<len;k++)if(!fsets[j].has(key(d,i+k))){ok=false;break}(ok?free:busy).push(p)});
+    if(free.length) out.push({d,i,len,free,busy});
+  }
+  out.sort((a,b)=>b.free.length-a.free.length||(a.d-b.d)||(a.i-b.i));
+  const chosen=[];
+  for(const c of out){
+    if(chosen.some(x=>x.d===c.d&&c.i<x.i+x.len&&x.i<c.i+c.len)) continue;
+    chosen.push(c); if(chosen.length===8) break;
+  }
+  return {chosen,filledCount:filled.length,unfilled:members.filter((p,i)=>sets[i].size===0)};
+}
+
+/* ---------- pieces ---------- */
+function stack(people,max=5){
+  const shown=people.slice(0,max).map(p=>`<span class="av" title="${esc(p.name)}">${esc(initials(p.name))}</span>`).join('');
+  return `<span class="stack">${shown}${people.length>max?`<span class="av more">+${people.length-max}</span>`:''}</span>`;
+}
+function gridHTML(cls,cellFn){
+  const short=phone.matches;
+  let h=`<div class="grid ${cls}" id="grid"><div></div>`+DAYS.map(d=>`<div class="dh">${short?d[0]:d}</div>`).join('');
+  for(let i=0;i<SLOTS;i++){
+    const top=i%2===0&&i>0?' hourtop':'';
+    h+=`<div class="tl${i%2?' half':''}${top}">${i%2?'':(short?fmtShort(slotStart(i)):fmt(slotStart(i)))}</div>`;
+    for(let d=0;d<7;d++) h+=cellFn(d,i,top);
+  }
+  return h+'</div>';
+}
+
+/* ---------- views ---------- */
+function render(){
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===S.tab)));
+  ({mine:renderMine,find:renderFind,cal:renderCal,groups:renderGroups})[S.tab]();
+}
+function updateStatus(){const el=$('#status');if(el)el.textContent=S.saving||defaultStatus()}
+function defaultStatus(){return S.mySlots.size?`${S.mySlots.size/2} free hours a week`:'Nothing marked yet'}
+
+function renderMine(){
+  const people=sortedPeople(), me=S.people.get(S.me);
+  if(me&&!S.dirty&&!painting) S.mySlots=new Set(me.slots||[]);
+  if(!me||S.switching){
+    $('#view').innerHTML=`<div class="card">
+      <div><span class="eyebrow">Step 1</span><h2 style="margin-top:4px">Tap your name</h2></div>
+      ${people.length?`<div class="pick-list">${people.map(p=>`<button data-me="${esc(p.id)}"><span class="av${(p.slots||[]).length?' on':''}">${esc(initials(p.name))}</span><span>${esc(p.name)}</span></button>`).join('')}</div>`:(S.ready?'<p class="empty">Nobody has joined yet.</p>':'<p class="empty">Loading the team…</p>')}
+      <div class="row" style="margin-top:4px"><input type="text" id="newname" placeholder="Not listed? Type your name" maxlength="40" autocomplete="name"><button class="btn primary" id="addme">Add</button></div>
+    </div>`;
+    document.querySelectorAll('[data-me]').forEach(b=>b.onclick=()=>setMe(b.dataset.me));
+    const nn=$('#newname'); $('#addme').onclick=()=>{addPerson(nn.value);nn.value=''};
+    nn.onkeydown=e=>{if(e.key==='Enter'){addPerson(nn.value);nn.value=''}};
+    return;
+  }
+  const week=S.mySlots.size/2;
+  const head=`<div class="card"><div class="me">
+      <span class="ring" style="--v:${Math.min(week/20,1).toFixed(3)}"><span>${week}h</span></span>
+      <div class="info"><h2>Hey ${esc(firstName(me.name))}</h2><span class="status" id="status">${esc(S.saving||defaultStatus())}</span>
+        <div class="tags" style="margin-top:6px">${groupsOf(S.me).map(g=>`<span class="tag" style="--c:${gColor(g.id)}">${esc(g.name)}</span>`).join('')}</div></div>
+      <button class="btn ghost small" id="switch">Not you?</button>
+    </div></div>`;
+  let body;
+  if(phone.matches){
+    const d=S.day;
+    const dayCount=dd=>{let n=0;for(let i=0;i<SLOTS;i++)if(S.mySlots.has(key(dd,i)))n++;return n};
+    const strip=DAYS.map((n,dd)=>`<button data-day="${dd}" aria-pressed="${dd===d}"><span class="d">${n}</span><span class="bar"><i style="width:${(dayCount(dd)/SLOTS*100).toFixed(0)}%"></i></span></button>`).join('');
+    const presets=PRESETS.map(([n,r,a,b],pi)=>{let full=true;for(let i=a;i<b;i++)if(!S.mySlots.has(key(d,i)))full=false;return `<button data-preset="${pi}" class="${full?'full':''}">${n}<small>${r}</small></button>`}).join('');
+    let slots='';
+    for(let i=0;i<SLOTS;i++){
+      const on=S.mySlots.has(key(d,i)), prev=i>0&&S.mySlots.has(key(d,i-1)), next=i<SLOTS-1&&S.mySlots.has(key(d,i+1));
+      let label='';
+      if(on&&!prev){let j=i;while(j<SLOTS&&S.mySlots.has(key(d,j)))j++;label=`Free · ${fmt(slotStart(i))} – ${fmt(slotStart(j))}`}
+      slots+=`<button class="slot${i%2?' half':''}${on?' on':''}${on&&prev?' cont':''}${on&&next?' cont-next':''}" data-k="${key(d,i)}" aria-pressed="${on}" aria-label="${DAYS_LONG[d]} ${fmt(slotStart(i))}"><span class="t">${fmt(slotStart(i))}</span><span class="b">${label}</span></button>`;
+    }
+    body=head+`<div class="card">
+        <div class="days">${strip}</div>
+        <div class="between"><h2>${DAYS_LONG[d]}</h2><button class="btn ghost small" id="clearday">Clear</button></div>
+        <div class="presets">${presets}</div>
+        <div class="slots">${slots}</div>
+      </div>
+      <div class="card">${copyPanel(false)}</div>`;
+  }else{
+    body=head+`<div class="card">
+        <div class="between"><div><h2>Your usual week</h2><span class="status">Click or drag across the boxes. Saves automatically.</span></div><button class="btn small" id="clear">Clear all</button></div>
+        <div class="gridwrap">${gridHTML('paint',(d,i,top)=>`<div class="cell${top}${S.mySlots.has(key(d,i))?' on':''}" data-k="${key(d,i)}" title="${DAYS_LONG[d]} ${fmt(slotStart(i))}"></div>`)}</div>
+      </div>
+      <div class="card">${copyPanel(true)}</div>`;
+  }
+  $('#view').innerHTML=body;
+  $('#switch').onclick=()=>{S.switching=true;render()};
+  const clr=$('#clear'); if(clr) clr.onclick=()=>{S.mySlots.clear();scheduleSave();render()};
+  const grid=$('#grid'); if(grid) bindPaint(grid);
+  document.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{S.day=+b.dataset.day;render()});
+  document.querySelectorAll('.slot').forEach(b=>b.onclick=()=>{const k=b.dataset.k;S.mySlots.has(k)?S.mySlots.delete(k):S.mySlots.add(k);scheduleSave();render()});
+  document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{
+    const [, ,a,z]=PRESETS[+b.dataset.preset];let full=true;for(let i=a;i<z;i++)if(!S.mySlots.has(key(S.day,i)))full=false;
+    for(let i=a;i<z;i++)full?S.mySlots.delete(key(S.day,i)):S.mySlots.add(key(S.day,i));scheduleSave();render()});
+  const cd=$('#clearday'); if(cd) cd.onclick=()=>{for(let i=0;i<SLOTS;i++)S.mySlots.delete(key(S.day,i));scheduleSave();render()};
+  document.querySelectorAll('[data-cpfrom]').forEach(b=>b.onclick=()=>{S.day=+b.dataset.cpfrom;S.copyTo.delete(S.day);render()});
+  document.querySelectorAll('[data-cpday]').forEach(b=>b.onclick=()=>{const dd=+b.dataset.cpday;S.copyTo.has(dd)?S.copyTo.delete(dd):S.copyTo.add(dd);render()});
+  document.querySelectorAll('[data-cpq]').forEach(b=>b.onclick=()=>{
+    const want=b.dataset.cpq==='wk'?[0,1,2,3,4]:b.dataset.cpq==='we'?[5,6]:[0,1,2,3,4,5,6];
+    const targets=want.filter(dd=>dd!==S.day), allOn=targets.every(dd=>S.copyTo.has(dd));
+    targets.forEach(dd=>allOn?S.copyTo.delete(dd):S.copyTo.add(dd));render()});
+  const dc=$('#docopy'); if(dc) dc.onclick=()=>{
+    const targets=[...S.copyTo].filter(dd=>dd!==S.day).sort();if(!targets.length)return;
+    targets.forEach(dd=>{for(let i=0;i<SLOTS;i++){S.mySlots.has(key(S.day,i))?S.mySlots.add(key(dd,i)):S.mySlots.delete(key(dd,i))}});
+    S.copyTo.clear();scheduleSave();render();flash(`Copied ${DAYS_LONG[S.day]} to ${targets.map(dd=>DAYS[dd]).join(', ')}.`)};
+}
+
+function copyPanel(withFrom){
+  const src=S.day, sel=[...S.copyTo].filter(dd=>dd!==src);
+  const srcHrs=(()=>{let n=0;for(let i=0;i<SLOTS;i++)if(S.mySlots.has(key(src,i)))n++;return n/2})();
+  return `<div class="between"><div><h2>Copy a day</h2><span class="status">${srcHrs?`${DAYS_LONG[src]} has ${srcHrs}h marked`:`${DAYS_LONG[src]} is empty, so copying clears the days you pick`}</span></div></div>
+    ${withFrom?`<span class="eyebrow">Copy from</span><div class="cpdays">${DAYS.map((n,dd)=>`<button data-cpfrom="${dd}" aria-pressed="${dd===src}" class="from">${n}</button>`).join('')}</div>`:''}
+    <div class="between"><span class="eyebrow">Copy ${DAYS[src]} to</span><div class="row"><button class="chip" data-cpq="wk">Weekdays</button><button class="chip" data-cpq="we">Weekend</button><button class="chip" data-cpq="all">All</button></div></div>
+    <div class="cpdays">${DAYS.map((n,dd)=>dd===src?`<button disabled class="src" aria-label="${DAYS_LONG[dd]} (copying from)">${n}</button>`:`<button data-cpday="${dd}" aria-pressed="${S.copyTo.has(dd)}">${n}</button>`).join('')}</div>
+    <button class="btn ${sel.length?'hot':''} wide" id="docopy"${sel.length?'':' disabled'}>${sel.length?`Copy to ${sel.map(dd=>DAYS[dd]).join(', ')}`:'Pick the days to copy to'}</button>`;
+}
+let painting=null;
+function bindPaint(grid){
+  const apply=c=>{const k=c.dataset.k;if(painting.on){S.mySlots.add(k);c.classList.add('on')}else{S.mySlots.delete(k);c.classList.remove('on')}};
+  grid.addEventListener('pointerdown',e=>{
+    const c=e.target.closest('.cell');if(!c)return;
+    e.preventDefault();S.dirty=true;painting={on:!S.mySlots.has(c.dataset.k)};apply(c);
+    try{grid.setPointerCapture(e.pointerId)}catch(_){}
+  });
+  grid.addEventListener('pointermove',e=>{
+    if(!painting)return;const el=document.elementFromPoint(e.clientX,e.clientY);const c=el&&el.closest&&el.closest('.cell');
+    if(c&&grid.contains(c))apply(c);
+  });
+  const end=()=>{if(painting){painting=null;scheduleSave();updateStatus()}};
+  grid.addEventListener('pointerup',end);grid.addEventListener('pointercancel',end);
+}
+
+function renderFind(){
+  const people=sortedPeople(), groups=sortedGroups();
+  if(S.target!=='all'&&!S.groups.has(S.target)) S.target='all';
+  const members=targetMembers();
+  const {chosen,filledCount,unfilled}=rank(members,S.duration);
+  const sets=members.map(slotsOf).filter(s=>s.size);
+  const pickSet=new Set();
+  if(S.pick) for(let k=0;k<S.pick.len;k++) pickSet.add(key(S.pick.d,S.pick.i+k));
+  const isCur=c=>S.pick&&S.pick.d===c.d&&S.pick.i===c.i&&S.pick.len===c.len;
+  const chips=`<button class="chip" data-target="all" aria-pressed="${S.target==='all'}">Everyone<span class="n">${people.length}</span></button>`+
+    groups.map(g=>`<button class="chip" data-target="${esc(g.id)}" aria-pressed="${S.target===g.id}" style="--c:${gColor(g.id)}"><span class="dot"></span>${esc(g.name)}<span class="n">${people.filter(p=>(g.members||[]).includes(p.id)).length}</span></button>`).join('');
+  const durs=[[1,'30 min'],[2,'1 hr'],[3,'1.5 hr'],[4,'2 hr']].map(([v,l])=>`<button class="chip" data-dur="${v}" aria-pressed="${v===S.duration}">${l}</button>`).join('');
+
+  let hero='', rest='';
+  if(chosen.length){
+    const c=chosen[0], full=c.free.length===filledCount;
+    hero=`<button class="hero${full?' full':''}" data-best="0" aria-current="${!!isCur(c)}">
+      <span class="eyebrow">${full?'Everyone can make it':'Best time'}</span>
+      <span><span class="big">${DAYS_LONG[c.d]}</span><br><span class="time">${fmt(slotStart(c.i))} – ${fmt(slotStart(c.i+c.len))}</span></span>
+      <span class="foot">${stack(c.free,6)}<span class="count">${c.free.length}/${filledCount} free</span></span>
+      ${c.busy.length?`<span class="miss">Missing ${c.busy.map(p=>esc(firstName(p.name))).join(', ')}</span>`:''}
+    </button>`;
+    if(chosen.length>1) rest=`<div class="card"><span class="eyebrow">Other options</span><ol class="best">${chosen.slice(1).map((c,n)=>{
+      const full=c.free.length===filledCount;
+      return `<li><button data-best="${n+1}" aria-current="${!!isCur(c)}"><span class="num">${n+2}</span>
+        <span class="when">${DAYS[c.d]} · ${fmt(slotStart(c.i))}<small>until ${fmt(slotStart(c.i+c.len))}</small></span>
+        <span class="score${full?' full':''}">${c.free.length}/${filledCount}</span>
+        ${c.busy.length?`<span class="missing">Missing ${c.busy.map(p=>esc(firstName(p.name))).join(', ')}</span>`:''}</button></li>`}).join('')}</ol></div>`;
+  }else{
+    hero=`<div class="card"><span class="eyebrow">Best time</span><h2>${members.length?'Waiting on availability':'No one in this team yet'}</h2><p class="empty">${members.length?'Once people mark their free times, the best slot shows up here.':'Add people on the Teams tab.'}</p></div>`;
+  }
+
+  let detail='';
+  if(S.pick){
+    const p=S.pick, free=[],busy=[];
+    members.forEach(m=>{const s=slotsOf(m);if(!s.size)return;let ok=true;for(let k=0;k<p.len;k++)if(!s.has(key(p.d,p.i+k))){ok=false;break}(ok?free:busy).push(m)});
+    detail=`<div class="card detail" id="detail"><div class="top"><div><span class="eyebrow">${fmt(slotStart(p.i))} – ${fmt(slotStart(p.i+p.len))}</span><h2>${DAYS_LONG[p.d]}</h2></div><button class="x" id="closepick" aria-label="Close">×</button></div>
+      <span class="eyebrow">Free · ${free.length}</span><div class="names">${free.map(m=>`<span class="name free">${esc(m.name)}</span>`).join('')||'<span class="empty">Nobody</span>'}</div>
+      <span class="eyebrow">Busy · ${busy.length}</span><div class="names">${busy.map(m=>`<span class="name">${esc(m.name)}</span>`).join('')||'<span class="empty">Nobody</span>'}</div>
+      <button class="btn hot wide" id="book">Book this time</button></div>`;
+  }
+
+  $('#view').innerHTML=`
+    <div class="card">
+      <div class="scroller">${chips}</div>
+      <div class="scroller">${durs}</div>
+    </div>
+    <div class="cols">
+      <div class="side">
+        ${hero}
+        ${rest}
+        ${unfilled.length?`<div class="card"><div class="between"><span class="eyebrow">Still need times from</span><span class="status">${unfilled.length} of ${members.length}</span></div><div class="names">${unfilled.map(p=>`<span class="name">${esc(p.name)}</span>`).join('')}</div></div>`:''}
+      </div>
+      <div class="card">
+        <div class="between"><h2>Week heatmap</h2>
+          <div class="legend"><span class="ramp"></span><span>more free</span><span><span class="sw" style="background:var(--good)"></span> all</span></div></div>
+        <div class="gridwrap">${gridHTML('heat',(d,i,top)=>{
+          const k=key(d,i);let n=0;sets.forEach(s=>{if(s.has(k))n++});
+          const p=filledCount?n/filledCount:0;
+          return `<div class="cell${top}${p>.5?' dark':''}${n&&n===filledCount?' all':''}${pickSet.has(k)?' pick':''}" style="--p:${p.toFixed(3)}" data-d="${d}" data-i="${i}" title="${DAYS_LONG[d]} ${fmt(slotStart(i))}: ${n} of ${filledCount} free">${n||''}</div>`})}</div>
+        <span class="status">Tap any box to see who's free.</span>
+      </div>
+    </div>
+    ${detail}`;
+  document.querySelectorAll('[data-target]').forEach(b=>b.onclick=()=>{S.target=b.dataset.target;S.pick=null;render()});
+  document.querySelectorAll('[data-dur]').forEach(b=>b.onclick=()=>{S.duration=+b.dataset.dur;S.pick=null;render()});
+  document.querySelectorAll('[data-best]').forEach(b=>b.onclick=()=>{const c=chosen[+b.dataset.best];S.pick={d:c.d,i:c.i,len:c.len};render()});
+  $('#grid').onclick=e=>{const c=e.target.closest('.cell');if(!c)return;const d=+c.dataset.d,i=Math.min(+c.dataset.i,SLOTS-S.duration);S.pick={d,i,len:S.duration};render()};
+  const cp=$('#closepick'); if(cp) cp.onclick=()=>{S.pick=null;render()};
+  const bk=$('#book'); if(bk) bk.onclick=()=>{
+    const g=S.groups.get(S.target), p=S.pick;
+    S.draft={title:(g?g.name:'Studio 49')+' meeting',group:S.target,date:nextDates(p.d,1)[0],start:p.i,len:p.len,location:'',fromPick:p.d};
+    setTab('cal');
+  };
+}
+
+function renderGroups(){
+  const people=sortedPeople(), groups=sortedGroups();
+  const cf=S.confirm;
+  const gcards=groups.map(g=>{
+    const mem=new Set(g.members||[]);
+    const inG=people.filter(p=>mem.has(p.id));
+    const confirming=cf&&cf.col==='groups'&&cf.id===g.id;
+    const ready=inG.filter(p=>(p.slots||[]).length).length;
+    return `<div class="card gcard" style="--c:${gColor(g.id)}">
+      <div class="between"><div class="gtitle"><span class="gicon">${esc(initials(g.name).slice(0,2))}</span><div><h2>${esc(g.name)}</h2><span class="status">${inG.length} people · ${ready} filled in</span></div></div></div>
+      <div class="names">${people.map(p=>`<button class="chip member" data-g="${esc(g.id)}" data-p="${esc(p.id)}" aria-pressed="${mem.has(p.id)}" style="--c:${gColor(g.id)}">${esc(p.name)}</button>`).join('')||'<span class="empty">Add teammates first.</span>'}</div>
+      <div class="row">
+        <button class="btn small primary" data-findg="${esc(g.id)}">Find a time</button>
+        ${confirming?`<span class="confirm">Delete this team? <button class="btn small danger" data-yes>Delete</button><button class="btn small" data-no>Keep</button></span>`:`<button class="btn small ghost" data-del="groups" data-id="${esc(g.id)}">Delete</button>`}
+      </div></div>`}).join('');
+  $('#view').innerHTML=`
+    ${groups.length?`<div class="groups">${gcards}</div>`:`<p class="empty">No teams yet. Create one below.</p>`}
+    <div class="card">
+      <h2>New team</h2>
+      <div class="row"><input type="text" id="gname" placeholder="e.g. Pitch crew" maxlength="40"><button class="btn primary" id="addg">Create</button></div>
+      <span class="status">Tap names on a team to add or remove them.</span>
+    </div>
+    <div class="card">
+      <div class="between"><h2>Everyone</h2><span class="status">${people.filter(p=>(p.slots||[]).length).length} of ${people.length} filled in</span></div>
+      ${people.length?`<div class="people">${people.map(p=>{
+        const n=(p.slots||[]).length;const confirming=cf&&cf.col==='people'&&cf.id===p.id;
+        return `<div class="person"><span class="pinfo"><span class="av${n?' on':''}">${esc(initials(p.name))}</span><span><span class="nm">${esc(p.name)}</span><span class="meta">${n?(n/2)+' free hrs/week':'not filled in'}</span></span></span>
+        <span class="tags">${groupsOf(p.id).map(g=>`<span class="tag" style="--c:${gColor(g.id)}">${esc(g.name)}</span>`).join('')}</span>
+        ${confirming?`<span class="confirm">Remove ${esc(firstName(p.name))}? <button class="btn small danger" data-yes>Remove</button><button class="btn small" data-no>Keep</button></span>`:`<button class="btn small ghost" data-del="people" data-id="${esc(p.id)}" aria-label="Remove ${esc(p.name)}">Remove</button>`}</div>`}).join('')}</div>`:'<p class="empty">Nobody has joined yet.</p>'}
+    </div>`;
+  const gn=$('#gname');$('#addg').onclick=()=>{addGroup(gn.value);gn.value=''};gn.onkeydown=e=>{if(e.key==='Enter'){addGroup(gn.value);gn.value=''}};
+  document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>toggleMember(b.dataset.g,b.dataset.p));
+  document.querySelectorAll('[data-findg]').forEach(b=>b.onclick=()=>{S.target=b.dataset.findg;S.pick=null;setTab('find')});
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.confirm={col:b.dataset.del,id:b.dataset.id};render()});
+  const y=document.querySelector('[data-yes]');if(y)y.onclick=()=>removeDoc(S.confirm.col,S.confirm.id);
+  const n=document.querySelector('[data-no]');if(n)n.onclick=()=>{S.confirm=null;render()};
+}
+
+/* ---------- calendar ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const ymd=dt=>dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate());
+const parseYmd=s=>{const [y,m,d]=String(s).split('-').map(Number);return new Date(y,(m||1)-1,d||1)};
+const todayYmd=()=>ymd(new Date());
+const wd=dt=>(dt.getDay()+6)%7;
+function nextDates(weekday,n){const out=[];const dt=new Date();dt.setHours(0,0,0,0);while(out.length<n){if(wd(dt)===weekday)out.push(ymd(dt));dt.setDate(dt.getDate()+1)}return out}
+function niceDate(s,long){return parseYmd(s).toLocaleDateString(undefined,long?{weekday:'long',month:'long',day:'numeric'}:{weekday:'short',month:'short',day:'numeric'})}
+function liveRender(){
+  if(painting)return;
+  const a=document.activeElement;
+  if(a&&a.matches&&a.matches('#view input, #view select')){
+    if(!liveRender.wait){liveRender.wait=true;a.addEventListener('blur',()=>{liveRender.wait=false;setTimeout(()=>render(),0)},{once:true})}
+    return;
+  }
+  render();
+}
+function sortedMeetings(){return [...S.meetings.entries()].map(([id,m])=>({id,...m})).filter(m=>m.date).sort((a,b)=>a.date.localeCompare(b.date)||a.start-b.start)}
+function meetingMembers(m){if(m.group==='all')return sortedPeople();const g=S.groups.get(m.group);return g?sortedPeople().filter(p=>(g.members||[]).includes(p.id)):[]}
+function meetingColor(m){return m.group==='all'?'var(--accent)':gColor(m.group)}
+function freeFor(m){
+  const d=wd(parseYmd(m.date));let free=0,filled=0;
+  meetingMembers(m).forEach(p=>{const s=slotsOf(p);if(!s.size)return;filled++;let ok=true;for(let k=0;k<m.len;k++)if(!s.has(key(d,m.start+k))){ok=false;break}if(ok)free++});
+  return {free,filled};
+}
+async function saveMeeting(){
+  const d=S.draft; if(!d||!S.db) return;
+  if(!d.date){flash('Pick a date for the meeting.');return}
+  if(d.start+d.len>SLOTS){flash('That meeting runs past 10 PM. Pick an earlier start or a shorter length.');return}
+  try{
+    await S.db.collection('meetings').add({title:(d.title||'').trim()||'Meeting',group:d.group,date:d.date,start:d.start,len:d.len,location:(d.location||'').trim(),createdBy:S.me||'',createdAt:Date.now()});
+    const dt=parseYmd(d.date);S.month={y:dt.getFullYear(),m:dt.getMonth()};S.selDate=d.date;S.draft=null;render();flash('Meeting booked.');
+  }catch(e){flash(e&&e.code==='permission-denied'?'The database refused that booking. Ask Ali to check the Firestore rules.':'Couldn\'t book it. Try again.')}
+}
+function newDraft(){const t=new Date();return {title:'Studio 49 meeting',group:'all',date:S.selDate&&S.selDate>=todayYmd()?S.selDate:todayYmd(),start:10,len:2,location:'',fromPick:null}}
+
+function renderCal(){
+  const today=todayYmd();
+  if(!S.month){const t=new Date();S.month={y:t.getFullYear(),m:t.getMonth()}}
+  const {y,m}=S.month;
+  let all=sortedMeetings();
+  if(S.onlyMine&&S.me) all=all.filter(x=>meetingMembers(x).some(p=>p.id===S.me));
+  const byDate={};all.forEach(x=>(byDate[x.date]=byDate[x.date]||[]).push(x));
+
+  const first=new Date(y,m,1), lead=wd(first), ndays=new Date(y,m+1,0).getDate();
+  let cells='';for(let k=0;k<lead;k++)cells+='<span></span>';
+  for(let dd=1;dd<=ndays;dd++){
+    const s=y+'-'+pad(m+1)+'-'+pad(dd), ms=byDate[s]||[];
+    cells+=`<button data-date="${s}" class="${s===today?'today':''}${s<today?' past':''}" aria-pressed="${s===S.selDate}" aria-label="${esc(niceDate(s,true))}${ms.length?', '+ms.length+' meeting'+(ms.length>1?'s':''):''}"><span>${dd}</span><span class="dots">${ms.slice(0,3).map(x=>`<i style="background:${meetingColor(x)}"></i>`).join('')}</span></button>`;
+  }
+  const monthName=first.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+
+  const list=S.selDate?(byDate[S.selDate]||[]):all.filter(x=>x.date>=today);
+  const grouped={};list.forEach(x=>(grouped[x.date]=grouped[x.date]||[]).push(x));
+  const cf=S.confirm;
+  const agenda=Object.keys(grouped).length?Object.entries(grouped).map(([dt,ms])=>`<div class="agday">
+      <div class="agdate"><span class="dnum">${parseYmd(dt).getDate()}</span><span class="eyebrow">${dt===today?'Today':parseYmd(dt).toLocaleDateString(undefined,{weekday:'short'})}</span></div>
+      <div class="aglist">${ms.map(x=>{
+        const f=freeFor(x), mem=meetingMembers(x), g=S.groups.get(x.group);
+        const confirming=cf&&cf.col==='meetings'&&cf.id===x.id;
+        return `<div class="mtg" style="--c:${meetingColor(x)}">
+          <div class="between" style="align-items:flex-start"><div style="min-width:0"><h3>${esc(x.title)}</h3><span class="status"><span class="when-dot"></span>${fmt(slotStart(x.start))} – ${fmt(slotStart(x.start+x.len))}${x.location?' · '+esc(x.location):''}</span></div>
+            <span class="tag">${esc(x.group==='all'?'Everyone':(g?g.name:'Team removed'))}</span></div>
+          <div class="between">${stack(mem,6)}<span class="status">${f.filled?`${f.free}/${f.filled} usually free`:'No availability yet'}</span></div>
+          ${confirming?`<span class="confirm">Cancel this meeting? <button class="btn small danger" data-yes>Cancel it</button><button class="btn small" data-no>Keep</button></span>`:`<div><button class="btn small ghost" data-del="meetings" data-id="${esc(x.id)}" style="padding-inline:0">Cancel meeting</button></div>`}
+        </div>`}).join('')}</div></div>`).join('')
+    :`<div class="card"><p class="empty">${S.selDate?'Nothing booked on '+esc(niceDate(S.selDate,true))+'.':'No upcoming meetings yet. Book one from Find a time, or tap New meeting.'}</p></div>`;
+
+  let form='';
+  if(S.draft){
+    const d=S.draft;
+    const teamOpts=[['all','Everyone'],...sortedGroups().map(g=>[g.id,g.name])].map(([v,l])=>`<option value="${esc(v)}"${v===d.group?' selected':''}>${esc(l)}</option>`).join('');
+    const startOpts=Array.from({length:SLOTS},(_,i)=>`<option value="${i}"${i===d.start?' selected':''}>${fmt(slotStart(i))}</option>`).join('');
+    const durs=[[1,'30 min'],[2,'1 hr'],[3,'1.5 hr'],[4,'2 hr']].map(([v,l])=>`<button class="chip" data-mlen="${v}" aria-pressed="${v===d.len}">${l}</button>`).join('');
+    const quick=d.fromPick!=null?`<div class="scroller">${nextDates(d.fromPick,4).map(s=>`<button class="chip" data-qdate="${s}" aria-pressed="${s===d.date}">${esc(niceDate(s))}</button>`).join('')}</div>`:'';
+    const pv=d.date?freeFor(d):null;
+    form=`<div class="card bookcard">
+      <div class="between"><h2>New meeting</h2><button class="x" id="canceldraft" aria-label="Close">×</button></div>
+      <label class="fld"><span class="eyebrow">Title</span><input type="text" id="m-title" value="${esc(d.title)}" maxlength="60"></label>
+      <label class="fld"><span class="eyebrow">Team</span><select id="m-group">${teamOpts}</select></label>
+      <div class="fld"><span class="eyebrow">Date</span>${quick}<input type="date" id="m-date" value="${esc(d.date||'')}" aria-label="Date"></div>
+      <div class="two"><label class="fld"><span class="eyebrow">Starts</span><select id="m-start">${startOpts}</select></label>
+        <label class="fld"><span class="eyebrow">Where</span><input type="text" id="m-loc" value="${esc(d.location||'')}" placeholder="Studio, Zoom…" maxlength="60"></label></div>
+      <div class="fld"><span class="eyebrow">Length</span><div class="scroller">${durs}</div></div>
+      ${pv&&pv.filled?`<span class="status">${pv.free} of ${pv.filled} people who filled in are usually free then</span>`:''}
+      <button class="btn hot wide" id="savemtg">Book meeting</button>
+    </div>`;
+  }
+
+  $('#view').innerHTML=`${form}
+    <div class="cols">
+      <div class="card">
+        <div class="between"><h2>${esc(monthName)}</h2><div class="row"><button class="x" data-mon="-1" aria-label="Previous month">‹</button><button class="x" data-mon="1" aria-label="Next month">›</button></div></div>
+        <div class="month">${DAYS.map(d=>`<span class="wk">${d[0]}</span>`).join('')}${cells}</div>
+        ${S.selDate?'<div><button class="btn small ghost" id="clearsel" style="padding-inline:0">Show all upcoming</button></div>':''}
+      </div>
+      <div class="side">
+        <div class="between"><h2>${S.selDate?esc(niceDate(S.selDate,true)):'Upcoming'}</h2>
+          <div class="row">${S.me?`<button class="chip" id="onlymine" aria-pressed="${S.onlyMine}">Mine</button>`:''}${S.draft?'':'<button class="btn small hot" id="newmtg">New meeting</button>'}</div></div>
+        ${agenda}
+      </div>
+    </div>`;
+
+  document.querySelectorAll('[data-mon]').forEach(b=>b.onclick=()=>{let mm=S.month.m+ +b.dataset.mon,yy=S.month.y;if(mm<0){mm=11;yy--}if(mm>11){mm=0;yy++}S.month={y:yy,m:mm};render()});
+  document.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{S.selDate=S.selDate===b.dataset.date?null:b.dataset.date;render()});
+  const cs=$('#clearsel'); if(cs) cs.onclick=()=>{S.selDate=null;render()};
+  const om=$('#onlymine'); if(om) om.onclick=()=>{S.onlyMine=!S.onlyMine;render()};
+  const nm=$('#newmtg'); if(nm) nm.onclick=()=>{S.draft=newDraft();render();window.scrollTo({top:0})};
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.confirm={col:b.dataset.del,id:b.dataset.id};render()});
+  const yb=document.querySelector('[data-yes]');if(yb)yb.onclick=()=>removeDoc(S.confirm.col,S.confirm.id);
+  const nb=document.querySelector('[data-no]');if(nb)nb.onclick=()=>{S.confirm=null;render()};
+  if(S.draft){
+    const d=S.draft;
+    $('#canceldraft').onclick=()=>{S.draft=null;render()};
+    $('#m-title').oninput=e=>{d.title=e.target.value};
+    $('#m-loc').oninput=e=>{d.location=e.target.value};
+    $('#m-group').onchange=e=>{d.group=e.target.value;render()};
+    $('#m-start').onchange=e=>{d.start=+e.target.value;render()};
+    $('#m-date').onchange=e=>{d.date=e.target.value;render()};
+    document.querySelectorAll('[data-qdate]').forEach(b=>b.onclick=()=>{d.date=b.dataset.qdate;render()});
+    document.querySelectorAll('[data-mlen]').forEach(b=>b.onclick=()=>{d.len=+b.dataset.mlen;render()});
+    $('#savemtg').onclick=saveMeeting;
+  }
+}
+
+function setTab(t){S.tab=t;store.set('s49.tab',t);S.confirm=null;S.pick=null;render();window.scrollTo({top:0})}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.pick){S.pick=null;render()}});
+
+/* keep scroll position across re-renders */
+const _render=render;
+render=function(){const y=window.scrollY;_render();window.scrollTo(0,y)};
+(phone.addEventListener?phone.addEventListener('change',()=>render()):phone.addListener(()=>render()));
+
+/* ---------- boot ---------- */
+render();
+(async()=>{
+  const cfg=window.FIREBASE_CONFIG;
+  if(!window.firebase||!cfg||!cfg.projectId||String(cfg.apiKey).startsWith('PASTE')){const b=$('#banner');b.textContent='The calendar isn\'t connected to its database yet. Add the Firebase settings to config.js.';b.hidden=false;return}
+  firebase.initializeApp(cfg);
+  const db=firebase.firestore();
+  S.db=db;
+  let got=0;const done=()=>{if(++got>=3)S.ready=true};
+  db.collection('people').onSnapshot(snap=>{
+    S.people=new Map(snap.docs.map(d=>[d.id,d.data()]));
+    if(S.me&&!S.people.has(S.me)&&!snap.metadata.fromCache){S.me='';store.set('s49.me','')}
+    done();liveRender();
+  },()=>flash('Lost connection to the team list. Reload the page.'));
+  db.collection('groups').onSnapshot(snap=>{
+    S.groups=new Map(snap.docs.map(d=>[d.id,d.data()]));done();liveRender();
+  },()=>flash('Lost connection to teams. Reload the page.'));
+  db.collection('meetings').onSnapshot(snap=>{
+    S.meetings=new Map(snap.docs.map(d=>[d.id,d.data()]));done();liveRender();
+  },()=>flash('Lost connection to the calendar. Reload the page.'));
+})();
+</script>
+</body>
+</html>

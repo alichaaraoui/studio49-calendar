@@ -1,0 +1,11 @@
+{
+  "name": "studio49-calendar",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "node scripts/seed.mjs"
+  },
+  "dependencies": {
+    "firebase": "^10.12.2"
+  }
+}
