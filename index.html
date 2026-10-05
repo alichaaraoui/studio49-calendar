@@ -232,6 +232,10 @@ input[type=date]{font:400 16px var(--f-body);color:var(--fg);background:var(--ra
 .fld input,.fld select{width:100%;flex:none}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media (max-width:420px){.two{grid-template-columns:1fr}}
+.suggs{display:flex;flex-direction:column;gap:8px}
+.sugg{width:100%;text-align:left;border:1px solid var(--line);background:var(--raise);border-radius:16px;padding:12px 14px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;transition:background .12s,border-color .12s}
+.sugg .missing{grid-column:1/3}
+.sugg[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
 .bookcard{border-color:var(--accent);box-shadow:0 18px 40px -22px var(--accent)}
 .month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
 .month .wk{font:500 11px var(--f-mono);color:var(--faint);text-align:center;padding-bottom:2px}
@@ -673,14 +677,28 @@ function renderCal(){
     const durs=[[1,'30 min'],[2,'1 hr'],[3,'1.5 hr'],[4,'2 hr']].map(([v,l])=>`<button class="chip" data-mlen="${v}" aria-pressed="${v===d.len}">${l}</button>`).join('');
     const quick=d.fromPick!=null?`<div class="scroller">${nextDates(d.fromPick,4).map(s=>`<button class="chip" data-qdate="${s}" aria-pressed="${s===d.date}">${esc(niceDate(s))}</button>`).join('')}</div>`:'';
     const pv=d.date?freeFor(d):null;
+    const team=meetingMembers(d), sg=rank(team,d.len);
+    const nowMin=new Date().getHours()*60+new Date().getMinutes();
+    const nextFor=(wday,start)=>{const dt=new Date();dt.setHours(0,0,0,0);for(let k=0;k<8;k++){if(wd(dt)===wday&&(k>0||slotStart(start)>nowMin))return ymd(dt);dt.setDate(dt.getDate()+1)}return ymd(dt)};
+    const suggs=sg.chosen.slice(0,5).map(c=>({...c,date:nextFor(c.d,c.i)}));
+    S.suggs=suggs;
+    const suggHTML=suggs.length?`<div class="suggs">${suggs.map((c,n)=>{
+        const on=d.date===c.date&&d.start===c.i, full=c.free.length===sg.filledCount;
+        return `<button class="sugg" data-sugg="${n}" aria-pressed="${on}">
+          <span class="when">${esc(niceDate(c.date))}<small>${fmt(slotStart(c.i))} – ${fmt(slotStart(c.i+c.len))}</small></span>
+          <span class="score${full?' full':''}">${c.free.length}/${sg.filledCount}</span>
+          <span class="missing">${c.busy.length?'Missing '+c.busy.map(p=>esc(firstName(p.name))).join(', '):'Everyone who filled in is free'}</span></button>`}).join('')}</div>`
+      :`<p class="empty">${team.length?'Nobody on this team has marked their times yet, so there are no suggestions.':'This team has no members yet.'}</p>`;
+    const missingTimes=sg.unfilled.length&&suggs.length?`<span class="status">Not counted yet: ${sg.unfilled.map(p=>esc(firstName(p.name))).join(', ')} (no times marked)</span>`:'';
     form=`<div class="card bookcard">
       <div class="between"><h2>New meeting</h2><button class="x" id="canceldraft" aria-label="Close">×</button></div>
       <label class="fld"><span class="eyebrow">Title</span><input type="text" id="m-title" value="${esc(d.title)}" maxlength="60"></label>
       <label class="fld"><span class="eyebrow">Team</span><select id="m-group">${teamOpts}</select></label>
-      <div class="fld"><span class="eyebrow">Date</span>${quick}<input type="date" id="m-date" value="${esc(d.date||'')}" aria-label="Date"></div>
+      <div class="fld"><span class="eyebrow">Length</span><div class="scroller">${durs}</div></div>
+      <div class="fld"><span class="eyebrow">Suggested times</span>${suggHTML}${missingTimes}</div>
+      <div class="fld"><span class="eyebrow">Or pick a date</span>${quick}<input type="date" id="m-date" value="${esc(d.date||'')}" aria-label="Date"></div>
       <div class="two"><label class="fld"><span class="eyebrow">Starts</span><select id="m-start">${startOpts}</select></label>
         <label class="fld"><span class="eyebrow">Where</span><input type="text" id="m-loc" value="${esc(d.location||'')}" placeholder="Studio, Zoom…" maxlength="60"></label></div>
-      <div class="fld"><span class="eyebrow">Length</span><div class="scroller">${durs}</div></div>
       ${pv&&pv.filled?`<span class="status">${pv.free} of ${pv.filled} people who filled in are usually free then</span>`:''}
       <button class="btn hot wide" id="savemtg">Book meeting</button>
     </div>`;
@@ -717,6 +735,7 @@ function renderCal(){
     $('#m-start').onchange=e=>{d.start=+e.target.value;render()};
     $('#m-date').onchange=e=>{d.date=e.target.value;render()};
     document.querySelectorAll('[data-qdate]').forEach(b=>b.onclick=()=>{d.date=b.dataset.qdate;render()});
+    document.querySelectorAll('[data-sugg]').forEach(b=>b.onclick=()=>{const c=S.suggs[+b.dataset.sugg];d.date=c.date;d.start=c.i;d.fromPick=c.d;render()});
     document.querySelectorAll('[data-mlen]').forEach(b=>b.onclick=()=>{d.len=+b.dataset.mlen;render()});
     $('#savemtg').onclick=saveMeeting;
   }
