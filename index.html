@@ -306,7 +306,7 @@ const S={
   mySlots:new Set(), dirty:false, saving:'',
   day:(new Date().getDay()+6)%7, copyTo:new Set(),
   target:'all', duration:2, pick:null, confirm:null,
-  meetings:new Map(), draft:null, month:null, selDate:null, onlyMine:false,
+  meetings:new Map(), newMember:{name:'',teams:new Set()}, draft:null, month:null, selDate:null, onlyMine:false,
 };
 
 /* ---------- data ---------- */
@@ -338,6 +338,23 @@ async function addPerson(name){
   catch(e){flash(e.code==='permission-denied'?'The database refused that change. Ask Ali to check the Firestore rules.':'Couldn\'t add you. Try again.')}
 }
 function setMe(id){S.me=id;S.switching=false;store.set('s49.me',id);S.dirty=false;const p=S.people.get(id);S.mySlots=new Set(p?p.slots||[]:[]);S.saving='';render()}
+async function addMember(){
+  const nm=S.newMember, name=(nm.name||'').trim();
+  if(!name){flash('Type the teammate\'s name first.');return}
+  if(!S.db) return;
+  const dup=sortedPeople().find(p=>p.name.toLowerCase()===name.toLowerCase());
+  if(dup){flash(`${dup.name} is already on the list.`);return}
+  try{
+    const ref=await S.db.collection('people').add({name,slots:[],updatedAt:Date.now()});
+    for(const gid of nm.teams){
+      const g=S.groups.get(gid); if(!g) continue;
+      await S.db.collection('groups').doc(gid).update({members:[...new Set([...(g.members||[]),ref.id])]});
+    }
+    const teams=[...nm.teams].map(id=>S.groups.get(id)?.name).filter(Boolean);
+    S.newMember={name:'',teams:new Set()};render();
+    flash(`Added ${name}${teams.length?' to '+teams.join(', '):''}.`);
+  }catch(e){flash('Couldn\'t add them. Try again.')}
+}
 async function addGroup(name){name=name.trim();if(!name||!S.db)return;try{await S.db.collection('groups').add({name,members:[]})}catch(e){flash('Couldn\'t create the team.')}}
 async function toggleMember(gid,pid){
   const g=S.groups.get(gid);if(!g)return;
@@ -578,7 +595,15 @@ function renderGroups(){
         <button class="btn small primary" data-findg="${esc(g.id)}">Find a time</button>
         ${confirming?`<span class="confirm">Delete this team? <button class="btn small danger" data-yes>Delete</button><button class="btn small" data-no>Keep</button></span>`:`<button class="btn small ghost" data-del="groups" data-id="${esc(g.id)}">Delete</button>`}
       </div></div>`}).join('');
+  const nm=S.newMember;
+  const addCard=`<div class="card">
+      <h2>Add a teammate</h2>
+      <input type="text" id="mname" placeholder="Full name" maxlength="60" value="${esc(nm.name)}" autocomplete="off">
+      ${groups.length?`<span class="eyebrow">Teams (optional)</span><div class="names">${groups.map(g=>`<button class="chip member" data-nmteam="${esc(g.id)}" aria-pressed="${nm.teams.has(g.id)}" style="--c:${gColor(g.id)}">${esc(g.name)}</button>`).join('')}</div>`:''}
+      <button class="btn hot wide" id="addmember">Add teammate</button>
+    </div>`;
   $('#view').innerHTML=`
+    ${addCard}
     ${groups.length?`<div class="groups">${gcards}</div>`:`<p class="empty">No teams yet. Create one below.</p>`}
     <div class="card">
       <h2>New team</h2>
@@ -593,6 +618,9 @@ function renderGroups(){
         <span class="tags">${groupsOf(p.id).map(g=>`<span class="tag" style="--c:${gColor(g.id)}">${esc(g.name)}</span>`).join('')}</span>
         ${confirming?`<span class="confirm">Remove ${esc(firstName(p.name))}? <button class="btn small danger" data-yes>Remove</button><button class="btn small" data-no>Keep</button></span>`:`<button class="btn small ghost" data-del="people" data-id="${esc(p.id)}" aria-label="Remove ${esc(p.name)}">Remove</button>`}</div>`}).join('')}</div>`:'<p class="empty">Nobody has joined yet.</p>'}
     </div>`;
+  const mn=$('#mname');mn.oninput=e=>{nm.name=e.target.value};mn.onkeydown=e=>{if(e.key==='Enter')addMember()};
+  document.querySelectorAll('[data-nmteam]').forEach(b=>b.onclick=()=>{const id=b.dataset.nmteam;nm.teams.has(id)?nm.teams.delete(id):nm.teams.add(id);render()});
+  $('#addmember').onclick=addMember;
   const gn=$('#gname');$('#addg').onclick=()=>{addGroup(gn.value);gn.value=''};gn.onkeydown=e=>{if(e.key==='Enter'){addGroup(gn.value);gn.value=''}};
   document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>toggleMember(b.dataset.g,b.dataset.p));
   document.querySelectorAll('[data-findg]').forEach(b=>b.onclick=()=>{S.target=b.dataset.findg;S.pick=null;setTab('find')});
