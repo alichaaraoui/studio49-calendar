@@ -648,8 +648,12 @@ function liveRender(){
   render();
 }
 function sortedMeetings(){return [...S.meetings.entries()].map(([id,m])=>({id,...m})).filter(m=>m.date).sort((a,b)=>a.date.localeCompare(b.date)||a.start-b.start)}
-function meetingMembers(m){if(m.group==='all')return sortedPeople();const g=S.groups.get(m.group);return g?sortedPeople().filter(p=>(g.members||[]).includes(p.id)):[]}
-function meetingColor(m){return m.group==='all'?'var(--accent)':gColor(m.group)}
+const ONE='1on1:';
+const oneIds=g=>String(g||'').startsWith(ONE)?g.slice(ONE.length).split(','):null;
+function meetingMembers(m){const ids=oneIds(m.group);if(ids)return ids.map(id=>S.people.has(id)?{id,...S.people.get(id)}:null).filter(Boolean);if(m.group==='all')return sortedPeople();const g=S.groups.get(m.group);return g?sortedPeople().filter(p=>(g.members||[]).includes(p.id)):[]}
+function meetingColor(m){return m.group==='all'?'var(--accent)':oneIds(m.group)?'var(--g4)':gColor(m.group)}
+function oneTitle(d){const n=id=>firstName(S.people.get(id)?.name||'?');return d.a&&d.b?`${n(d.a)} / ${n(d.b)} 1-on-1`:'1-on-1'}
+function setKind(d,kind){d.kind=kind;if(kind==='1on1'){d.a=d.a||S.me||'';d.b=d.b||'';d.group=ONE+d.a+','+d.b;if(!d.titleEdited)d.title=oneTitle(d)}else{d.group='all';if(!d.titleEdited)d.title='Studio 49 meeting'}}
 function freeFor(m){
   const d=wd(parseYmd(m.date));let free=0,filled=0;
   meetingMembers(m).forEach(p=>{const s=slotsOf(p);if(!s.size)return;filled++;let ok=true;for(let k=0;k<m.len;k++)if(!s.has(key(d,m.start+k))){ok=false;break}if(ok)free++});
@@ -658,13 +662,20 @@ function freeFor(m){
 async function saveMeeting(){
   const d=S.draft; if(!d||!S.db) return;
   if(!d.date){flash('Pick a date for the meeting.');return}
+  if(d.kind==='1on1'&&(!d.a||!d.b)){flash('Pick both people for the 1-on-1.');return}
+  if(d.kind==='1on1'&&d.a===d.b){flash('A 1-on-1 needs two different people.');return}
   if(d.start+d.len>SLOTS){flash('That meeting runs past 10 PM. Pick an earlier start or a shorter length.');return}
   try{
     await S.db.collection('meetings').add({title:(d.title||'').trim()||'Meeting',group:d.group,date:d.date,start:d.start,len:d.len,location:(d.location||'').trim(),createdBy:S.me||'',createdAt:Date.now()});
     const dt=parseYmd(d.date);S.month={y:dt.getFullYear(),m:dt.getMonth()};S.selDate=d.date;S.draft=null;render();flash('Meeting booked.');
   }catch(e){flash(e&&e.code==='permission-denied'?'The database refused that booking. Ask Ali to check the Firestore rules.':'Couldn\'t book it. Try again.')}
 }
-function newDraft(){const t=new Date();return {title:'Studio 49 meeting',group:'all',date:S.selDate&&S.selDate>=todayYmd()?S.selDate:todayYmd(),start:10,len:2,location:'',fromPick:null}}
+async function saveLocation(){
+  const e=S.editLoc; if(!e||!S.db) return;
+  try{await S.db.collection('meetings').doc(e.id).update({location:(e.value||'').trim()});S.editLoc=null;render();flash('Location updated.')}
+  catch(err){flash(err&&err.code==='permission-denied'?'The database refused that change. Ask Ali to check the Firestore rules.':'Couldn\'t update the location. Try again.')}
+}
+function newDraft(kind){const d={kind:'team',title:'Studio 49 meeting',group:'all',date:S.selDate&&S.selDate>=todayYmd()?S.selDate:todayYmd(),start:10,len:2,location:'',fromPick:null};if(kind==='1on1')setKind(d,'1on1');return d}
 
 function renderCal(){
   const today=todayYmd();
@@ -692,15 +703,18 @@ function renderCal(){
         const confirming=cf&&cf.col==='meetings'&&cf.id===x.id;
         return `<div class="mtg" style="--c:${meetingColor(x)}">
           <div class="between" style="align-items:flex-start"><div style="min-width:0"><h3>${esc(x.title)}</h3><span class="status"><span class="when-dot"></span>${fmt(slotStart(x.start))} – ${fmt(slotStart(x.start+x.len))}${x.location?' · '+esc(x.location):''}</span></div>
-            <span class="tag">${esc(x.group==='all'?'Everyone':(g?g.name:'Team removed'))}</span></div>
+            <span class="tag">${esc(x.group==='all'?'Everyone':oneIds(x.group)?'1-on-1':(g?g.name:'Team removed'))}</span></div>
           <div class="between">${stack(mem,6)}<span class="status">${f.filled?`${f.free}/${f.filled} usually free`:'No availability yet'}</span></div>
-          ${confirming?`<span class="confirm">Cancel this meeting? <button class="btn small danger" data-yes>Cancel it</button><button class="btn small" data-no>Keep</button></span>`:`<div><button class="btn small ghost" data-del="meetings" data-id="${esc(x.id)}" style="padding-inline:0">Cancel meeting</button></div>`}
+          ${S.editLoc&&S.editLoc.id===x.id?`<div class="row"><input type="text" id="locedit" value="${esc(S.editLoc.value)}" placeholder="Studio, Zoom…" maxlength="60" aria-label="Location"><button class="btn small primary" id="locsave">Save</button><button class="btn small" id="loccancel">Cancel</button></div>`:''}
+          ${confirming?`<span class="confirm">Cancel this meeting? <button class="btn small danger" data-yes>Cancel it</button><button class="btn small" data-no>Keep</button></span>`:`<div class="row"><button class="btn small ghost" data-del="meetings" data-id="${esc(x.id)}" style="padding-inline:0">Cancel meeting</button>${S.editLoc&&S.editLoc.id===x.id?'':`<button class="btn small ghost" data-editloc="${esc(x.id)}">${x.location?'Change location':'Add location'}</button>`}</div>`}
         </div>`}).join('')}</div></div>`).join('')
     :`<div class="card"><p class="empty">${S.selDate?'Nothing booked on '+esc(niceDate(S.selDate,true))+'.':'No upcoming meetings yet. Book one from Find a time, or tap New meeting.'}</p></div>`;
 
   let form='';
   if(S.draft){
     const d=S.draft;
+    const one=d.kind==='1on1';
+    const pOpts=sel=>`<option value=""${sel?'':' selected'}>Pick someone</option>`+sortedPeople().map(p=>`<option value="${esc(p.id)}"${p.id===sel?' selected':''}>${esc(p.name)}</option>`).join('');
     const teamOpts=[['all','Everyone'],...sortedGroups().map(g=>[g.id,g.name])].map(([v,l])=>`<option value="${esc(v)}"${v===d.group?' selected':''}>${esc(l)}</option>`).join('');
     const startOpts=Array.from({length:SLOTS},(_,i)=>`<option value="${i}"${i===d.start?' selected':''}>${fmt(slotStart(i))}</option>`).join('');
     const durs=[[1,'30 min'],[2,'1 hr'],[3,'1.5 hr'],[4,'2 hr']].map(([v,l])=>`<button class="chip" data-mlen="${v}" aria-pressed="${v===d.len}">${l}</button>`).join('');
@@ -717,19 +731,21 @@ function renderCal(){
           <span class="when">${esc(niceDate(c.date))}<small>${fmt(slotStart(c.i))} – ${fmt(slotStart(c.i+c.len))}</small></span>
           <span class="score${full?' full':''}">${c.free.length}/${sg.filledCount}</span>
           <span class="missing">${c.busy.length?'Missing '+c.busy.map(p=>esc(firstName(p.name))).join(', '):'Everyone who filled in is free'}</span></button>`}).join('')}</div>`
-      :`<p class="empty">${team.length?'Nobody on this team has marked their times yet, so there are no suggestions.':'This team has no members yet.'}</p>`;
+      :`<p class="empty">${one&&team.length<2?'Pick both people to see times that work for them.':team.length?'Nobody on this team has marked their times yet, so there are no suggestions.':'This team has no members yet.'}</p>`;
     const missingTimes=sg.unfilled.length&&suggs.length?`<span class="status">Not counted yet: ${sg.unfilled.map(p=>esc(firstName(p.name))).join(', ')} (no times marked)</span>`:'';
     form=`<div class="card bookcard">
-      <div class="between"><h2>New meeting</h2><button class="x" id="canceldraft" aria-label="Close">×</button></div>
+      <div class="between"><h2>${one?'New 1-on-1':'New meeting'}</h2><button class="x" id="canceldraft" aria-label="Close">×</button></div>
       <label class="fld"><span class="eyebrow">Title</span><input type="text" id="m-title" value="${esc(d.title)}" maxlength="60"></label>
-      <label class="fld"><span class="eyebrow">Team</span><select id="m-group">${teamOpts}</select></label>
+      <div class="fld"><span class="eyebrow">Type</span><div class="row"><button class="chip" data-kind="team" aria-pressed="${!one}">Team meeting</button><button class="chip" data-kind="1on1" aria-pressed="${one}">1-on-1</button></div></div>
+      ${one?`<div class="two"><label class="fld"><span class="eyebrow">Who</span><select id="m-a">${pOpts(d.a)}</select></label><label class="fld"><span class="eyebrow">With</span><select id="m-b">${pOpts(d.b)}</select></label></div>`
+        :`<label class="fld"><span class="eyebrow">Team</span><select id="m-group">${teamOpts}</select></label>`}
       <div class="fld"><span class="eyebrow">Length</span><div class="scroller">${durs}</div></div>
       <div class="fld"><span class="eyebrow">Suggested times</span>${suggHTML}${missingTimes}</div>
       <div class="fld"><span class="eyebrow">Or pick a date</span>${quick}<input type="date" id="m-date" value="${esc(d.date||'')}" aria-label="Date"></div>
       <div class="two"><label class="fld"><span class="eyebrow">Starts</span><select id="m-start">${startOpts}</select></label>
         <label class="fld"><span class="eyebrow">Where</span><input type="text" id="m-loc" value="${esc(d.location||'')}" placeholder="Studio, Zoom…" maxlength="60"></label></div>
       ${pv&&pv.filled?`<span class="status">${pv.free} of ${pv.filled} people who filled in are usually free then</span>`:''}
-      <button class="btn hot wide" id="savemtg">Book meeting</button>
+      <button class="btn hot wide" id="savemtg">${one?'Book 1-on-1':'Book meeting'}</button>
     </div>`;
   }
 
@@ -742,7 +758,7 @@ function renderCal(){
       </div>
       <div class="side">
         <div class="between"><h2>${S.selDate?esc(niceDate(S.selDate,true)):'Upcoming'}</h2>
-          <div class="row">${S.me?`<button class="chip" id="onlymine" aria-pressed="${S.onlyMine}">Mine</button>`:''}${S.draft?'':'<button class="btn small hot" id="newmtg">New meeting</button>'}</div></div>
+          <div class="row">${S.me?`<button class="chip" id="onlymine" aria-pressed="${S.onlyMine}">Mine</button>`:''}${S.draft?'':'<button class="btn small" id="new1on1">1-on-1</button><button class="btn small hot" id="newmtg">New meeting</button>'}</div></div>
         ${agenda}
       </div>
     </div>`;
@@ -752,15 +768,24 @@ function renderCal(){
   const cs=$('#clearsel'); if(cs) cs.onclick=()=>{S.selDate=null;render()};
   const om=$('#onlymine'); if(om) om.onclick=()=>{S.onlyMine=!S.onlyMine;render()};
   const nm=$('#newmtg'); if(nm) nm.onclick=()=>{S.draft=newDraft();render();window.scrollTo({top:0})};
+  const n1=$('#new1on1'); if(n1) n1.onclick=()=>{S.draft=newDraft('1on1');render();window.scrollTo({top:0})};
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.confirm={col:b.dataset.del,id:b.dataset.id};render()});
+  document.querySelectorAll('[data-editloc]').forEach(b=>b.onclick=()=>{const m=S.meetings.get(b.dataset.editloc);S.editLoc={id:b.dataset.editloc,value:m?.location||''};render();const i=$('#locedit');if(i){i.focus();i.select()}});
+  const le=$('#locedit'); if(le){le.oninput=e=>{S.editLoc.value=e.target.value};le.onkeydown=e=>{if(e.key==='Enter')saveLocation();if(e.key==='Escape'){S.editLoc=null;render()}}}
+  const ls=$('#locsave'); if(ls) ls.onclick=saveLocation;
+  const lc=$('#loccancel'); if(lc) lc.onclick=()=>{S.editLoc=null;render()};
   const yb=document.querySelector('[data-yes]');if(yb)yb.onclick=()=>removeDoc(S.confirm.col,S.confirm.id);
   const nb=document.querySelector('[data-no]');if(nb)nb.onclick=()=>{S.confirm=null;render()};
   if(S.draft){
     const d=S.draft;
     $('#canceldraft').onclick=()=>{S.draft=null;render()};
-    $('#m-title').oninput=e=>{d.title=e.target.value};
+    $('#m-title').oninput=e=>{d.title=e.target.value;d.titleEdited=true};
     $('#m-loc').oninput=e=>{d.location=e.target.value};
-    $('#m-group').onchange=e=>{d.group=e.target.value;render()};
+    const mg=$('#m-group'); if(mg) mg.onchange=e=>{d.group=e.target.value;render()};
+    const pickP=(k,v)=>{d[k]=v;d.group=ONE+d.a+','+d.b;if(!d.titleEdited)d.title=oneTitle(d);render()};
+    const ma=$('#m-a'); if(ma) ma.onchange=e=>pickP('a',e.target.value);
+    const mb=$('#m-b'); if(mb) mb.onchange=e=>pickP('b',e.target.value);
+    document.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{setKind(d,b.dataset.kind);render()});
     $('#m-start').onchange=e=>{d.start=+e.target.value;render()};
     $('#m-date').onchange=e=>{d.date=e.target.value;render()};
     document.querySelectorAll('[data-qdate]').forEach(b=>b.onclick=()=>{d.date=b.dataset.qdate;render()});
@@ -770,7 +795,7 @@ function renderCal(){
   }
 }
 
-function setTab(t){S.tab=t;store.set('s49.tab',t);S.confirm=null;S.pick=null;render();window.scrollTo({top:0})}
+function setTab(t){S.tab=t;S.editLoc=null;store.set('s49.tab',t);S.confirm=null;S.pick=null;render();window.scrollTo({top:0})}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.pick){S.pick=null;render()}});
 
